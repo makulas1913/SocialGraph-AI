@@ -5,11 +5,11 @@ export const Settings: React.FC = () => {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
-          <SettingsIcon className="text-blue-500" />
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-900 flex items-center gap-3">
+          <SettingsIcon className="text-blue-500 w-6 h-6 md:w-8 md:h-8" />
           الإعدادات
         </h1>
-        <p className="text-slate-500 mt-2">إدارة حسابك وتفضيلات الذكاء الاصطناعي</p>
+        <p className="text-slate-500 mt-2 text-sm md:text-base">إدارة حسابك وتفضيلات الذكاء الاصطناعي</p>
       </div>
 
       <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">

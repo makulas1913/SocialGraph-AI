@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { MessageSquare, RefreshCw, Loader2, Send, Sparkles, Check } from 'lucide-react';
+import { MessageSquare, RefreshCw, Loader2, Send, Sparkles, Check, Twitter } from 'lucide-react';
 import { generateReply } from '../services/gemini';
+import { useOutletContext } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface DMEvent {
   id: string;
@@ -15,6 +17,8 @@ interface DMEvent {
 }
 
 export const DirectMessages: React.FC = () => {
+  const { username, onLogin } = useOutletContext<{ username: string | null, onLogin: () => void }>();
+  
   const [dms, setDms] = useState<DMEvent[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,13 +31,14 @@ export const DirectMessages: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const fetchDms = async () => {
+    if (!username) return;
+    
     setIsLoading(true);
     setError(null);
     try {
       const res = await fetch('/api/twitter/dms');
       
       if (res.status === 401) {
-        window.location.reload();
         return;
       }
       
@@ -58,8 +63,35 @@ export const DirectMessages: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchDms();
-  }, []);
+    if (username) {
+      fetchDms();
+    }
+  }, [username]);
+
+  if (!username) {
+    return (
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="flex flex-col items-center justify-center py-20 text-center font-cairo"
+      >
+        <div className="w-20 h-20 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500 rounded-full flex items-center justify-center mb-6">
+          <Twitter size={40} />
+        </div>
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">الرسائل الخاصة</h2>
+        <p className="text-slate-500 dark:text-slate-400 max-w-md mb-8">
+          قم بربط حساب X الخاص بك للوصول إلى رسائلك الخاصة والرد عليها بذكاء وسرعة باستخدام الذكاء الاصطناعي.
+        </p>
+        <button
+          onClick={onLogin}
+          className="bg-gradient-to-br from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white px-8 py-3 rounded-xl font-medium transition-all flex items-center gap-2 shadow-md hover:shadow-lg"
+        >
+          <Twitter size={20} />
+          ربط حساب X
+        </button>
+      </motion.div>
+    );
+  }
 
   const handleGenerateReply = async (dm: DMEvent) => {
     setSelectedDm(dm);
@@ -119,18 +151,18 @@ export const DirectMessages: React.FC = () => {
 
   return (
     <div className="space-y-8" dir="rtl">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
-            <MessageSquare className="text-blue-500" />
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 flex items-center gap-3">
+            <MessageSquare className="text-blue-500 w-6 h-6 md:w-8 md:h-8" />
             الرسائل الخاصة
           </h1>
-          <p className="text-slate-500 mt-2">قراءة والرد على الرسائل الخاصة (DMs) باستخدام الذكاء الاصطناعي</p>
+          <p className="text-slate-500 mt-2 text-sm md:text-base">قراءة والرد على الرسائل الخاصة (DMs) باستخدام الذكاء الاصطناعي</p>
         </div>
         <button 
           onClick={fetchDms}
           disabled={isLoading}
-          className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
+          className="flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50 w-full md:w-auto"
         >
           <RefreshCw size={18} className={isLoading ? "animate-spin" : ""} />
           تحديث

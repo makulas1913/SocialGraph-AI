@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useOutletContext } from "react-router-dom";
 import {
   Bot,
   Sparkles,
@@ -115,17 +116,38 @@ const TweetCard: React.FC<{
       </div>
 
       {isEditing ? (
-        <textarea
-          value={editText}
-          onChange={(e) => setEditText(e.target.value)}
-          className="w-full min-h-[100px] p-3 rounded-xl border border-blue-200 focus:border-blue-400 focus:ring-1 focus:ring-blue-400 outline-none transition-all resize-none bg-blue-50/50 text-slate-800 text-[15px] leading-relaxed"
-          dir="auto"
-          autoFocus
-        />
+        <div className="relative">
+          <textarea
+            value={editText}
+            onChange={(e) => setEditText(e.target.value)}
+            className="w-full min-h-[100px] p-3 rounded-xl border border-emerald-200 dark:border-emerald-800 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 outline-none transition-all resize-none bg-emerald-50/50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-[15px] leading-relaxed"
+            dir="auto"
+            autoFocus
+          />
+          <div className="absolute bottom-2 left-2 flex items-center gap-2">
+            <span className={`text-xs font-medium ${editText.length > 280 ? 'text-red-500' : 'text-slate-400'}`}>
+              {editText.length}/280
+            </span>
+            {editText && (
+              <button
+                onClick={() => setEditText('')}
+                className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                title="مسح النص"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        </div>
       ) : (
-        <p className="text-slate-800 whitespace-pre-wrap leading-relaxed text-[15px]">
-          {tweet.text}
-        </p>
+        <div>
+          <p className="text-slate-800 whitespace-pre-wrap leading-relaxed text-[15px]">
+            {tweet.text}
+          </p>
+          <div className={`text-left mt-2 text-xs font-medium ${tweet.text.length > 280 ? 'text-red-500' : 'text-slate-400'}`}>
+            {tweet.text.length}/280
+          </div>
+        </div>
       )}
 
       {tweet.imageUrl && (
@@ -164,6 +186,8 @@ const TweetCard: React.FC<{
 };
 
 export default function ContentStudio() {
+  const { username, onLogin } = useOutletContext<{ username: string | null, onLogin: () => void }>();
+  
   const [activeTab, setActiveTab] = useState<'thread' | 'reply' | 'article'>('thread');
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
@@ -199,6 +223,10 @@ export default function ContentStudio() {
   }, []);
 
   const handlePostToTwitter = async () => {
+    if (!username) {
+      onLogin();
+      return;
+    }
     if (!thread || thread.length === 0) return;
     setIsPostingToTwitter(true);
     try {
@@ -214,8 +242,7 @@ export default function ContentStudio() {
         alert("تم نشر الثريد بنجاح على حسابك في X!");
       } else {
         if (res.status === 401) {
-           window.location.reload();
-           alert("انتهت صلاحية الجلسة. يرجى إعادة تسجيل الدخول إلى X.");
+           onLogin();
         } else {
            alert("فشل النشر: " + (data.error || "خطأ غير معروف"));
         }
@@ -229,6 +256,10 @@ export default function ContentStudio() {
   };
 
   const handlePostReplyToTwitter = async () => {
+    if (!username) {
+      onLogin();
+      return;
+    }
     if (!generatedReply) return;
     setIsPostingToTwitter(true);
     try {
@@ -243,8 +274,7 @@ export default function ContentStudio() {
         alert("تم نشر الرد بنجاح على حسابك في X!");
       } else {
         if (res.status === 401) {
-           window.location.reload();
-           alert("انتهت صلاحية الجلسة. يرجى إعادة تسجيل الدخول إلى X.");
+           onLogin();
         } else {
            alert("فشل النشر: " + (data.error || "خطأ غير معروف"));
         }
@@ -258,6 +288,10 @@ export default function ContentStudio() {
   };
 
   const handlePostArticleToTwitter = async () => {
+    if (!username) {
+      onLogin();
+      return;
+    }
     if (!generatedArticle) return;
     setIsPostingToTwitter(true);
     try {
@@ -273,8 +307,7 @@ export default function ContentStudio() {
         alert("تم نشر المقال بنجاح على حسابك في X!");
       } else {
         if (res.status === 401) {
-           window.location.reload();
-           alert("انتهت صلاحية الجلسة. يرجى إعادة تسجيل الدخول إلى X.");
+           onLogin();
         } else {
            alert("فشل النشر: " + (data.error || "خطأ غير معروف"));
         }
@@ -299,12 +332,12 @@ export default function ContentStudio() {
     }
   };
 
-  const handleGenerate = async (prompt: string, useSearch: boolean, count: string = tweetCount, style: string = tweetStyle, lang: string = tweetLanguage) => {
+  const handleGenerate = async (prompt: string, useSearch: boolean, count: string = tweetCount, style: string = tweetStyle, lang: string = tweetLanguage, isQuickAction: boolean = false) => {
     setIsGenerating(true);
     setError(null);
     setThread([]);
     try {
-      const result = await generateThread(prompt, useSearch, count, style, lang, threadImage?.base64, threadImage?.mimeType, threadUrl);
+      const result = await generateThread(prompt, useSearch, count, style, lang, threadImage?.base64, threadImage?.mimeType, threadUrl, isQuickAction);
       setThread(result);
     } catch (err: any) {
       console.error(err);
@@ -316,36 +349,36 @@ export default function ContentStudio() {
 
   const handleTodayIdea = () => {
     handleGenerate(
-      "أعطني فكرة اليوم: ابحث في الويب عن أداة AI جديدة للشركات أو أداة تصميم جديدة (صدرت أو تم تحديثها مؤخراً جداً في وقتنا الحالي)، واشرح كيف يمكن استخدامها في 3 خطوات بسيطة على شكل مسودة ثريد جاهزة للنشر.",
-      true
+      "أعطني فكرة اليوم: ابحث في الويب عن أداة أو تقنية أو خبر جديد في مجالات اهتمامي (صدرت أو تم تحديثها مؤخراً جداً في وقتنا الحالي)، واشرح كيف يمكن الاستفادة منها في 3 خطوات بسيطة على شكل مسودة ثريد جاهزة للنشر.",
+      true, tweetCount, tweetStyle, tweetLanguage, true
     );
   };
 
   const handleQuickGenerate = () => {
     handleGenerate(
-      "قم بتوليد سلسلة تغريدات مبتكرة عن أحدث التطورات في مجال الذكاء الاصطناعي، أتمتة الأعمال، أو التصميم (تأكد من أن الأخبار حديثة جداً وتخص وقتنا الحالي، وتجنب الأخبار القديمة).",
-      true
+      "قم بتوليد سلسلة تغريدات مبتكرة عن أحدث التطورات والأخبار في مجالات اهتمامي (تأكد من أن الأخبار حديثة جداً وتخص وقتنا الحالي، وتجنب الأخبار القديمة).",
+      true, tweetCount, tweetStyle, tweetLanguage, true
     );
   };
 
   const handleMotivational = () => {
     handleGenerate(
-      "اكتب ثريد تحفيزي حول أهمية التطور المستمر وتعلم أدوات الذكاء الاصطناعي لزيادة الإنتاجية والإبداع.",
-      false
+      "اكتب ثريد تحفيزي حول أهمية التطور المستمر والتعلم في مجالات اهتمامي لزيادة الإنتاجية والإبداع والنجاح المهني.",
+      false, tweetCount, tweetStyle, tweetLanguage, true
     );
   };
 
   const handleControversial = () => {
     handleGenerate(
-      "اكتب ثريد جدلي (ولكن مهني) يطرح فكرة أن الذكاء الاصطناعي لن يستبدل البشر، بل سيستبدل من لا يستخدمه منهم. اطرح حججاً قوية.",
-      false
+      "اكتب ثريد جدلي (ولكن مهني) يطرح فكرة غير تقليدية أو رأي مخالف للسائد في مجالات اهتمامي. اطرح حججاً قوية ومقنعة.",
+      false, tweetCount, tweetStyle, tweetLanguage, true
     );
   };
 
   const handleAdvice = () => {
     handleGenerate(
-      "اكتب ثريد عبارة عن 5 نصائح ذهبية وعملية جداً لتنظيم الوقت، أتمتة المهام الروتينية، وتعزيز الإبداع.",
-      false
+      "اكتب ثريد عبارة عن 5 نصائح ذهبية وعملية جداً للمهتمين أو العاملين في مجالات اهتمامي لتطوير مهاراتهم وتحقيق نتائج أفضل.",
+      false, tweetCount, tweetStyle, tweetLanguage, true
     );
   };
 
@@ -457,31 +490,35 @@ export default function ContentStudio() {
   };
 
   return (
-    <div className="font-cairo text-slate-900 selection:bg-blue-200">
-      <div className="mb-8 flex items-center justify-between">
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="font-cairo text-slate-900 dark:text-slate-100 selection:bg-emerald-200 dark:selection:bg-emerald-900"
+    >
+      <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
-            <PenTool className="text-blue-500" />
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
+            <PenTool className="text-emerald-500 w-6 h-6 md:w-8 md:h-8" />
             استوديو المحتوى
           </h1>
-          <p className="text-slate-500 mt-2">قم بإنشاء خيوط تغريدات (Threads) ومقالات احترافية باستخدام الذكاء الاصطناعي</p>
+          <p className="text-slate-500 dark:text-slate-400 mt-2 text-sm md:text-base">قم بإنشاء خيوط تغريدات (Threads) ومقالات احترافية باستخدام الذكاء الاصطناعي</p>
         </div>
-        <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl">
+        <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl overflow-x-auto whitespace-nowrap border border-slate-200 dark:border-slate-700">
           <button
             onClick={() => setActiveTab('thread')}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'thread' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'thread' ? 'bg-white dark:bg-slate-700 shadow-sm text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
           >
             صانع الثريدات
           </button>
           <button
             onClick={() => setActiveTab('reply')}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'reply' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'reply' ? 'bg-white dark:bg-slate-700 shadow-sm text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
           >
             الردود الذكية
           </button>
           <button
             onClick={() => setActiveTab('article')}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'article' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'article' ? 'bg-white dark:bg-slate-700 shadow-sm text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
           >
             كتابة المقالات
           </button>
@@ -490,11 +527,15 @@ export default function ContentStudio() {
 
       <main className="max-w-6xl mx-auto">
         {activeTab === 'thread' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="grid grid-cols-1 lg:grid-cols-12 gap-8"
+          >
             {/* Sidebar / Controls */}
             <div className="lg:col-span-4 space-y-6">
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-            <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 shadow-sm border border-emerald-100 dark:border-emerald-900/50">
+            <h2 className="text-lg font-bold mb-4 flex items-center gap-2 dark:text-white">
               <Zap className="w-5 h-5 text-amber-500" />
               إجراءات سريعة
             </h2>
@@ -502,7 +543,7 @@ export default function ContentStudio() {
               <button
                 onClick={handleTodayIdea}
                 disabled={isGenerating}
-                className="w-full flex items-center justify-between p-3 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors disabled:opacity-50"
+                className="w-full flex items-center justify-between p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors disabled:opacity-50"
               >
                 <span className="font-semibold">فكرة اليوم 💡</span>
                 <Search className="w-4 h-4" />
@@ -585,35 +626,46 @@ export default function ContentStudio() {
 
             {/* Main Content */}
             <div className="lg:col-span-8 space-y-6">
-              <div className="bg-white rounded-2xl p-2 shadow-sm border border-slate-200 focus-within:border-blue-400 focus-within:ring-1 focus-within:ring-blue-400 transition-all">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl p-2 shadow-sm border border-emerald-100 dark:border-emerald-900/50 focus-within:border-emerald-400 focus-within:ring-1 focus-within:ring-emerald-400 transition-all relative">
                 {threadImage && (
-                  <div className="relative rounded-xl overflow-hidden border border-slate-200 bg-slate-50 mb-2 mx-2 mt-2">
+                  <div className="relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 mb-2 mx-2 mt-2">
                     <img src={threadImage.url} alt="Thread context" className="w-full max-h-48 object-contain" />
                     <button 
                       onClick={() => setThreadImage(null)}
-                      className="absolute top-2 right-2 p-1.5 bg-white/80 backdrop-blur-sm rounded-lg text-slate-600 hover:text-red-600 hover:bg-white transition-colors"
+                      className="absolute top-2 right-2 p-1.5 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm rounded-lg text-slate-600 dark:text-slate-300 hover:text-red-600 dark:hover:text-red-400 hover:bg-white dark:hover:bg-slate-800 transition-colors"
                     >
                       <X className="w-4 h-4" />
                     </button>
                   </div>
                 )}
-                <textarea
-                  value={customPrompt}
-                  onChange={(e) => setCustomPrompt(e.target.value)}
-                  placeholder="اكتب فكرتك هنا، أو الصق خبراً لتحويله إلى ثريد..."
-                  className="w-full min-h-[120px] p-3 resize-none outline-none bg-transparent"
-                  dir="auto"
-                />
+                <div className="relative">
+                  <textarea
+                    value={customPrompt}
+                    onChange={(e) => setCustomPrompt(e.target.value)}
+                    placeholder="اكتب فكرتك هنا، أو الصق خبراً لتحويله إلى ثريد..."
+                    className="w-full min-h-[120px] p-3 resize-none outline-none bg-transparent dark:text-white"
+                    dir="auto"
+                  />
+                  {customPrompt && (
+                    <button
+                      onClick={() => setCustomPrompt('')}
+                      className="absolute top-2 left-2 p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                      title="مسح النص"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
                 {showUrlInput && (
                   <div className="px-3 pb-3">
-                    <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all">
+                    <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500 transition-all">
                       <Link className="w-4 h-4 text-slate-400" />
                       <input
                         type="url"
                         value={threadUrl}
                         onChange={(e) => setThreadUrl(e.target.value)}
                         placeholder="أدخل رابط التغريدة أو المقال هنا..."
-                        className="w-full bg-transparent outline-none text-sm text-slate-700"
+                        className="w-full bg-transparent outline-none text-sm text-slate-700 dark:text-slate-200"
                         dir="ltr"
                       />
                       <button onClick={() => { setShowUrlInput(false); setThreadUrl(""); }} className="text-slate-400 hover:text-red-500">
@@ -622,25 +674,25 @@ export default function ContentStudio() {
                     </div>
                   </div>
                 )}
-                <div className="flex flex-col sm:flex-row items-center justify-between p-2 border-t border-slate-100 gap-3">
-                  <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                    <label className="flex items-center justify-center p-2 bg-slate-50 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-100 transition-colors text-slate-500 hover:text-indigo-600" title="إرفاق صورة">
+                <div className="flex flex-col items-start justify-between p-2 border-t border-slate-100 dark:border-slate-800 gap-3">
+                  <div className="flex flex-wrap items-center gap-2 w-full">
+                    <label className="flex items-center justify-center p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400" title="إرفاق صورة">
                       <ImageIcon className="w-4 h-4" />
                       <input type="file" className="hidden" accept="image/*" onChange={(e) => handleImageUpload(e, 'thread')} />
                     </label>
                     <button
                       onClick={() => setShowUrlInput(!showUrlInput)}
-                      className={`flex items-center justify-center p-2 border rounded-lg transition-colors ${showUrlInput || threadUrl ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-indigo-600'}`}
+                      className={`flex items-center justify-center p-2 border rounded-lg transition-colors ${showUrlInput || threadUrl ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-emerald-600'}`}
                       title="إرفاق رابط"
                     >
                       <Link className="w-4 h-4" />
                     </button>
-                    <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-2 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all">
-                      <Settings2 className="w-4 h-4 text-slate-400" />
+                    <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-2 focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500 transition-all flex-1 min-w-[120px]">
+                      <Settings2 className="w-4 h-4 text-slate-400 shrink-0" />
                       <select
                         value={tweetCount}
                         onChange={(e) => setTweetCount(e.target.value)}
-                        className="bg-transparent text-slate-700 text-sm block py-2 outline-none cursor-pointer"
+                        className="bg-transparent text-slate-700 text-sm block py-2 outline-none cursor-pointer w-full"
                       >
                         <option value="auto">طول تلقائي</option>
                         <option value="1">تغريدة يتيمة</option>
@@ -650,12 +702,12 @@ export default function ContentStudio() {
                         <option value="10">10 تغريدات</option>
                       </select>
                     </div>
-                    <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-2 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all">
-                      <Palette className="w-4 h-4 text-slate-400" />
+                    <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-2 focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500 transition-all flex-1 min-w-[120px]">
+                      <Palette className="w-4 h-4 text-slate-400 shrink-0" />
                       <select
                         value={tweetStyle}
                         onChange={(e) => setTweetStyle(e.target.value)}
-                        className="bg-transparent text-slate-700 text-sm block py-2 outline-none cursor-pointer"
+                        className="bg-transparent text-slate-700 text-sm block py-2 outline-none cursor-pointer w-full"
                       >
                         <option value="auto">أسلوب تلقائي</option>
                         <option value="formal">رسمي</option>
@@ -667,12 +719,12 @@ export default function ContentStudio() {
                         <option value="philosophical">فلسفي</option>
                       </select>
                     </div>
-                    <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-2 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all">
-                      <Globe className="w-4 h-4 text-slate-400" />
+                    <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-2 focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500 transition-all flex-1 min-w-[100px]">
+                      <Globe className="w-4 h-4 text-slate-400 shrink-0" />
                       <select
                         value={tweetLanguage}
                         onChange={(e) => setTweetLanguage(e.target.value)}
-                        className="bg-transparent text-slate-700 text-sm block py-2 outline-none cursor-pointer"
+                        className="bg-transparent text-slate-700 text-sm block py-2 outline-none cursor-pointer w-full"
                       >
                         <option value="arabic">العربية</option>
                         <option value="english">English</option>
@@ -684,7 +736,7 @@ export default function ContentStudio() {
                   <button
                     onClick={() => handleGenerate(customPrompt, true, tweetCount, tweetStyle, tweetLanguage)}
                     disabled={!customPrompt.trim() || isGenerating}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-slate-900 text-white px-6 py-2.5 rounded-xl font-medium hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full flex items-center justify-center gap-2 bg-emerald-600 text-white px-6 py-2.5 rounded-xl font-medium hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2"
                   >
                     {isGenerating ? (
                       <>
@@ -714,15 +766,15 @@ export default function ContentStudio() {
                     animate={{ opacity: 1, y: 0 }}
                     className="space-y-4"
                   >
-                    <div className="flex items-center justify-between px-1">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between px-1 gap-3">
                       <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
-                        <Twitter className="w-5 h-5 text-blue-500" />
+                        <Twitter className="w-5 h-5 text-emerald-500" />
                         الثريد الجاهز ({thread.length} تغريدات)
                       </h3>
                       <button
                         onClick={handlePostToTwitter}
                         disabled={isPostingToTwitter}
-                        className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-xl font-bold hover:bg-slate-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                        className="flex items-center justify-center gap-2 px-4 py-2 bg-black text-white rounded-xl font-bold hover:bg-slate-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm w-full sm:w-auto"
                       >
                         {isPostingToTwitter ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
@@ -748,7 +800,7 @@ export default function ContentStudio() {
                 )}
               </AnimatePresence>
             </div>
-          </div>
+          </motion.div>
         )}
           
         {activeTab === 'reply' && (
@@ -822,16 +874,27 @@ export default function ContentStudio() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                       توجيهات الرد (اختياري)
                     </label>
-                    <textarea
-                      value={replyPrompt}
-                      onChange={(e) => setReplyPrompt(e.target.value)}
-                      placeholder="مثال: اكتب رداً داعماً يضيف معلومة جديدة عن أتمتة المحاسبة..."
-                      className="w-full min-h-[100px] p-3 rounded-xl border border-slate-200 focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400 outline-none transition-all resize-none"
-                      dir="auto"
-                    />
+                    <div className="relative">
+                      <textarea
+                        value={replyPrompt}
+                        onChange={(e) => setReplyPrompt(e.target.value)}
+                        placeholder="مثال: اكتب رداً داعماً يضيف معلومة جديدة عن أتمتة المحاسبة..."
+                        className="w-full min-h-[100px] p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 outline-none transition-all resize-none"
+                        dir="auto"
+                      />
+                      {replyPrompt && (
+                        <button
+                          onClick={() => setReplyPrompt('')}
+                          className="absolute top-2 left-2 p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                          title="مسح النص"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   <button
@@ -868,20 +931,20 @@ export default function ContentStudio() {
                     className="bg-white rounded-2xl p-5 shadow-sm border border-indigo-100 relative overflow-hidden"
                   >
                     <div className="absolute top-0 right-0 w-1 h-full bg-indigo-500" />
-                    <div className="flex items-start justify-between gap-4 mb-3">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-3">
                       <h3 className="font-bold text-slate-800">الرد المقترح</h3>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
                         <button
                           onClick={handlePostReplyToTwitter}
                           disabled={isPostingToTwitter}
-                          className="text-white bg-black hover:bg-slate-800 transition-colors px-3 py-1.5 rounded-lg flex items-center gap-1 text-sm font-medium disabled:opacity-50"
+                          className="text-white bg-black hover:bg-slate-800 transition-colors px-3 py-1.5 rounded-lg flex items-center justify-center gap-1 text-sm font-medium disabled:opacity-50 flex-1 sm:flex-none"
                         >
                           {isPostingToTwitter ? <Loader2 className="w-4 h-4 animate-spin" /> : <Twitter className="w-4 h-4" />}
                           نشر
                         </button>
                         <button 
                           onClick={handleCopyReply}
-                          className="text-slate-400 hover:text-indigo-600 transition-colors p-1.5 hover:bg-indigo-50 rounded-lg flex items-center gap-1 text-sm"
+                          className="text-slate-400 hover:text-indigo-600 transition-colors p-1.5 hover:bg-indigo-50 rounded-lg flex items-center justify-center gap-1 text-sm flex-1 sm:flex-none"
                         >
                           {replyCopied ? (
                             <><Check className="w-4 h-4 text-emerald-500" /> تم النسخ</>
@@ -914,16 +977,27 @@ export default function ContentStudio() {
                 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                       موضوع المقال
                     </label>
-                    <textarea
-                      value={articlePrompt}
-                      onChange={(e) => setArticlePrompt(e.target.value)}
-                      placeholder="اكتب موضوع المقال أو الفكرة التي تريد الكتابة عنها بالتفصيل..."
-                      className="w-full min-h-[120px] p-3 rounded-xl border border-slate-200 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 outline-none transition-all resize-none"
-                      dir="auto"
-                    />
+                    <div className="relative">
+                      <textarea
+                        value={articlePrompt}
+                        onChange={(e) => setArticlePrompt(e.target.value)}
+                        placeholder="اكتب موضوع المقال أو الفكرة التي تريد الكتابة عنها بالتفصيل..."
+                        className="w-full min-h-[120px] p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 outline-none transition-all resize-none"
+                        dir="auto"
+                      />
+                      {articlePrompt && (
+                        <button
+                          onClick={() => setArticlePrompt('')}
+                          className="absolute top-2 left-2 p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                          title="مسح النص"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   <button
@@ -960,11 +1034,11 @@ export default function ContentStudio() {
                     className="bg-white rounded-2xl p-5 shadow-sm border border-emerald-100 relative overflow-hidden"
                   >
                     <div className="absolute top-0 right-0 w-1 h-full bg-emerald-500" />
-                    <div className="flex items-start justify-between gap-4 mb-4 border-b border-slate-100 pb-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 border-b border-slate-100 pb-4">
                       <h3 className="font-bold text-slate-800">المقال الجاهز</h3>
                       <button 
                         onClick={handleCopyArticle}
-                        className="text-slate-400 hover:text-emerald-600 transition-colors p-1.5 hover:bg-emerald-50 rounded-lg flex items-center gap-1 text-sm"
+                        className="text-slate-400 hover:text-emerald-600 transition-colors p-1.5 hover:bg-emerald-50 rounded-lg flex items-center justify-center gap-1 text-sm w-full sm:w-auto"
                       >
                         {articleCopied ? (
                           <><Check className="w-4 h-4 text-emerald-500" /> تم النسخ</>
@@ -982,6 +1056,6 @@ export default function ContentStudio() {
             </motion.div>
           )}
       </main>
-    </div>
+    </motion.div>
   );
 }

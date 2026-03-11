@@ -7,6 +7,7 @@ import dotenv from "dotenv";
 
 import authRoutes from "./server/routes/auth.routes.js";
 import twitterRoutes from "./server/routes/twitter.routes.js";
+import personaRoutes from "./server/routes/persona.routes.js";
 
 dotenv.config();
 
@@ -63,6 +64,7 @@ async function startServer() {
   // Mount modular routes
   app.use("/api/auth", authRoutes);
   app.use("/api/twitter", twitterRoutes);
+  app.use("/api/persona", personaRoutes);
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {

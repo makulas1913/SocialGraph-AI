@@ -3,6 +3,10 @@ import { TwitterApi } from "twitter-api-v2";
 
 const router = Router();
 
+// In-memory store for OAuth states (state -> codeVerifier)
+// This avoids cookie partitioning issues between iframe and popup
+const authStates = new Map<string, string>();
+
 // Helper to get redirect URI based on environment
 const getRedirectUri = () => {
   const baseUrl = process.env.APP_URL || "http://localhost:3000";
@@ -27,19 +31,18 @@ router.get("/twitter/url", (req, res) => {
     // Generate OAuth 2.0 PKCE auth link
     const { url, codeVerifier, state } = client.generateOAuth2AuthLink(
       redirectUri,
-      { scope: ["tweet.read", "tweet.write", "users.read", "offline.access", "dm.read", "dm.write"] }
+      { scope: ["tweet.read", "tweet.write", "users.read", "offline.access"] }
     );
 
-    // Encode the codeVerifier into the state parameter
-    const statePayload = Buffer.from(JSON.stringify({
-      s: state,
-      v: codeVerifier
-    })).toString('base64url');
+    // Store codeVerifier in memory keyed by state
+    authStates.set(state, codeVerifier);
 
-    // Replace the original state in the URL with our payload
-    const finalUrl = url.replace(`state=${state}`, `state=${statePayload}`);
+    // Clean up old states after 10 minutes to prevent memory leaks
+    setTimeout(() => {
+      authStates.delete(state);
+    }, 10 * 60 * 1000);
 
-    res.json({ url: finalUrl });
+    res.json({ url });
   } catch (error: any) {
     console.error("Error generating Twitter Auth URL:", error);
     res.status(500).json({ error: "Failed to generate auth URL" });
@@ -49,25 +52,21 @@ router.get("/twitter/url", (req, res) => {
 // 2. Callback Handler
 router.get(["/twitter/callback", "/twitter/callback/"], async (req, res) => {
   try {
-    const { state: statePayload, code } = req.query;
+    const { state, code } = req.query;
 
-    if (!statePayload || !code) {
+    if (!state || !code) {
       return res.status(400).send("Missing state or code from Twitter.");
     }
 
-    // Decode the state payload
-    let decoded;
-    try {
-      decoded = JSON.parse(Buffer.from(statePayload as string, 'base64url').toString());
-    } catch (e) {
-      return res.status(400).send("Invalid state payload.");
+    const stateStr = state as string;
+    const codeVerifier = authStates.get(stateStr);
+
+    if (!codeVerifier) {
+      return res.status(400).send("Invalid session state or missing code verifier. The login request may have expired. Please try logging in again.");
     }
 
-    const { s: originalState, v: codeVerifier } = decoded;
-
-    if (!codeVerifier || !originalState) {
-      return res.status(400).send("Invalid session data in state.");
-    }
+    // Remove the state from memory so it can't be reused
+    authStates.delete(stateStr);
 
     const client = new TwitterApi({
       clientId: process.env.TWITTER_CLIENT_ID!,
