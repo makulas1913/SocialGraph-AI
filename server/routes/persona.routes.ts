@@ -1,15 +1,7 @@
 import { Router } from "express";
-import fs from "fs";
-import path from "path";
+import prisma from "../prisma.js";
 
 const router = Router();
-const dataDir = path.join(process.cwd(), "data");
-const personaFile = path.join(dataDir, "persona.json");
-
-// Ensure data directory exists
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
-}
 
 // Default persona
 const defaultPersona = {
@@ -38,7 +30,7 @@ const defaultPersona = {
   writing_style: {
     structure: "منظم جداً، يعتمد على القوائم النقطية (Bullet points) والترقيم لتسهيل القراءة.",
     hooks: "يبدأ التغريدات أو الخيوط (Threads) بسؤال مثير للاهتمام أو حقيقة تقنية صادمة لجذب الانتباه.",
-    emojis: "يستخدم الرموز التعبيرية بشكل معتدل واحترافي لكسر الجمود (مثل: 🚀، 🧠، 💡، 🛠️، ⚙️).",
+    emojis: "يقتصر استخدام الرموز التعبيرية فقط في أول تغريدة (الخُطّاف) بشكل خفيف جداً وعند الحاجة الضرورية فقط، ويُمنع استخدامها في باقي التغريدات.",
     formatting: "يستخدم المسافات بذكاء لإراحة عين القارئ، ويفضل الجمل القصيرة والمركزة."
   },
   image_style: {
@@ -53,27 +45,95 @@ const defaultPersona = {
   ]
 };
 
-// Initialize file if it doesn't exist
-if (!fs.existsSync(personaFile)) {
-  fs.writeFileSync(personaFile, JSON.stringify(defaultPersona, null, 2));
-}
+const mapToDb = (frontendPersona: any) => ({
+  identityRole: frontendPersona.identity.role,
+  identityMission: frontendPersona.identity.mission,
+  targetAudience: frontendPersona.target_audience,
+  coreInterests: JSON.stringify(frontendPersona.core_interests),
+  tonePrimary: frontendPersona.tone_of_voice.primary_tone,
+  toneSarcasm: frontendPersona.tone_of_voice.sarcasm_level,
+  toneCreativity: frontendPersona.tone_of_voice.creativity_level,
+  toneChars: JSON.stringify(frontendPersona.tone_of_voice.characteristics),
+  writeStructure: frontendPersona.writing_style.structure,
+  writeHooks: frontendPersona.writing_style.hooks,
+  writeEmojis: frontendPersona.writing_style.emojis,
+  writeFormatting: frontendPersona.writing_style.formatting,
+  imageRules: frontendPersona.image_style.prompt_rules,
+  imagePriority: frontendPersona.image_style.visual_priority,
+  responseRules: JSON.stringify(frontendPersona.response_rules)
+});
 
-router.get("/", (req, res) => {
+const mapToFrontend = (dbPersona: any) => ({
+  identity: {
+    role: dbPersona.identityRole,
+    mission: dbPersona.identityMission
+  },
+  target_audience: dbPersona.targetAudience,
+  core_interests: JSON.parse(dbPersona.coreInterests),
+  tone_of_voice: {
+    primary_tone: dbPersona.tonePrimary,
+    sarcasm_level: dbPersona.toneSarcasm,
+    creativity_level: dbPersona.toneCreativity,
+    characteristics: JSON.parse(dbPersona.toneChars)
+  },
+  writing_style: {
+    structure: dbPersona.writeStructure,
+    hooks: dbPersona.writeHooks,
+    emojis: dbPersona.writeEmojis,
+    formatting: dbPersona.writeFormatting
+  },
+  image_style: {
+    prompt_rules: dbPersona.imageRules,
+    visual_priority: dbPersona.imagePriority
+  },
+  response_rules: JSON.parse(dbPersona.responseRules)
+});
+
+router.get("/", async (req, res) => {
   try {
-    const data = fs.readFileSync(personaFile, "utf-8");
-    res.json({ success: true, data: JSON.parse(data) });
+    // For now, we use a single global persona (userId = null)
+    // If we want per-user personas, we would check req.session.twitterUserId
+    let persona = await prisma.persona.findFirst({
+      where: { userId: null }
+    });
+
+    if (!persona) {
+      // Create default if it doesn't exist
+      persona = await prisma.persona.create({
+        data: mapToDb(defaultPersona)
+      });
+    }
+
+    res.json({ success: true, data: mapToFrontend(persona) });
   } catch (error: any) {
-    res.status(500).json({ error: "Failed to read persona" });
+    console.error("Failed to read persona:", error);
+    res.status(500).json({ error: "Failed to read persona", details: String(error) });
   }
 });
 
-router.post("/", (req, res) => {
+router.post("/", async (req, res) => {
   try {
     const newPersona = req.body;
-    fs.writeFileSync(personaFile, JSON.stringify(newPersona, null, 2));
+    
+    const existingPersona = await prisma.persona.findFirst({
+      where: { userId: null }
+    });
+
+    if (existingPersona) {
+      await prisma.persona.update({
+        where: { id: existingPersona.id },
+        data: mapToDb(newPersona)
+      });
+    } else {
+      await prisma.persona.create({
+        data: mapToDb(newPersona)
+      });
+    }
+
     res.json({ success: true, data: newPersona });
   } catch (error: any) {
-    res.status(500).json({ error: "Failed to save persona" });
+    console.error("Failed to save persona:", error);
+    res.status(500).json({ error: "Failed to save persona", details: error.message, stack: error.stack });
   }
 });
 

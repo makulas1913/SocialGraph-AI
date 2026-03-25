@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { LayoutDashboard, PenTool, Inbox, MessageSquare, Settings, LogOut, Brain, Twitter } from 'lucide-react';
+import { LayoutDashboard, PenTool, Inbox, MessageSquare, Settings, LogOut, Brain, Twitter, Clock } from 'lucide-react';
 
 interface SidebarProps {
   username: string | null;
@@ -16,14 +16,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ username, onLogout, onLogin, o
     { to: '/persona', icon: <Brain size={20} />, label: 'مختبر الشخصية' },
     { to: '/inbox', icon: <Inbox size={20} />, label: 'صندوق الردود' },
     { to: '/messages', icon: <MessageSquare size={20} />, label: 'الرسائل الخاصة' },
+    { to: '/history', icon: <Clock size={20} />, label: 'سجل المحتوى' },
     { to: '/settings', icon: <Settings size={20} />, label: 'الإعدادات' },
   ];
 
   return (
-    <div className="w-64 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md text-slate-700 dark:text-slate-300 flex flex-col h-screen border-l border-emerald-100 dark:border-emerald-900/50 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
-      <div className="p-6 border-b border-emerald-100 dark:border-emerald-900/50">
+    <div className="w-64 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md text-slate-700 dark:text-slate-300 flex flex-col h-screen border-l border-border/50 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
+      <div className="p-6 border-b border-border/50">
         <h1 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-          <span className="text-emerald-500">X</span> Agent
+          <span className="text-primary">X</span> Agent
         </h1>
         {username ? (
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">@{username}</p>
@@ -41,8 +42,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ username, onLogout, onLogin, o
             className={({ isActive }) =>
               `flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
                 isActive
-                  ? 'bg-gradient-to-l from-emerald-500/10 to-emerald-600/5 text-emerald-600 dark:text-emerald-400 font-medium shadow-sm border border-emerald-200/50 dark:border-emerald-800/50'
-                  : 'hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-emerald-600 dark:hover:text-emerald-400'
+                  ? 'bg-gradient-to-l from-primary/10 to-primary/5 text-primary font-medium shadow-sm border border-border/50'
+                  : 'hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-primary'
               }`
             }
           >
@@ -52,7 +53,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ username, onLogout, onLogin, o
         ))}
       </nav>
 
-      <div className="p-4 border-t border-emerald-100 dark:border-emerald-900/50">
+      <div className="p-4 border-t border-border/50">
         {username ? (
           <button
             onClick={onLogout}
@@ -64,7 +65,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ username, onLogout, onLogin, o
         ) : (
           <button
             onClick={onLogin}
-            className="flex items-center gap-3 px-4 py-3 w-full text-right rounded-xl text-white bg-gradient-to-br from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 transition-all shadow-md hover:shadow-lg"
+            className="flex items-center gap-3 px-4 py-3 w-full text-right rounded-xl text-white bg-gradient-to-br from-primary to-primary/80 hover:from-primary/90 hover:to-primary transition-all shadow-md hover:shadow-lg"
           >
             <Twitter size={20} />
             <span>ربط حساب X</span>

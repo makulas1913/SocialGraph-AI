@@ -1,0 +1,63 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String    @id @default(cuid())
+  twitterId       String?   @unique
+  twitterUsername String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  personas        Persona[]
+  histories       History[]
+}
+
+model Persona {
+  id              String   @id @default(cuid())
+  userId          String?  @unique // One persona per user for now, or null for default
+  user            User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  identityRole    String
+  identityMission String
+  targetAudience  String
+  coreInterests   String   // JSON string array
+  
+  tonePrimary     String
+  toneSarcasm     Int
+  toneCreativity  Int
+  toneChars       String   // JSON string array
+  
+  writeStructure  String
+  writeHooks      String
+  writeEmojis     String
+  writeFormatting String
+  
+  imageRules      String
+  imagePriority   String
+  
+  responseRules   String   // JSON string array
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model History {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  prompt    String
+  content   String   // JSON string of the generated thread/tweets
+  type      String   @default("thread") // thread, reply, article
+  
+  createdAt DateTime @default(now())
+}

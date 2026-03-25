@@ -1,6 +1,15 @@
 import { Router } from "express";
 import { TwitterApi } from "twitter-api-v2";
 
+declare module 'express-session' {
+  interface SessionData {
+    accessToken?: string;
+    refreshToken?: string;
+    twitterUserId?: string;
+    twitterUsername?: string;
+  }
+}
+
 const router = Router();
 
 // Middleware to check if user is authenticated with Twitter

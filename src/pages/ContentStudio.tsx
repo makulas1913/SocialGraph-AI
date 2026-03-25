@@ -1,30 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { useOutletContext } from "react-router-dom";
-import {
-  Bot,
-  Sparkles,
-  Zap,
-  RefreshCw,
-  Image as ImageIcon,
-  Copy,
-  Check,
-  Twitter,
-  Loader2,
-  Search,
-  Flame,
-  Lightbulb,
-  Target,
-  MessageCircleReply,
-  Upload,
-  X,
-  FileText,
-  Settings2,
-  Edit3,
-  Palette,
-  Globe,
-  Link,
-  PenTool
-} from "lucide-react";
+import { useAuth } from "../hooks/useAuth";
+import { Save, Bot, Sparkles, Zap, RefreshCw, Image as ImageIcon, Copy, Check, Twitter, Loader2, Search, Flame, Lightbulb, Target, MessageCircleReply, Upload, X, FileText, Settings2, Edit3, Palette, Globe, Link, PenTool } from "lucide-react";
 import {
   getSmartSuggestions,
   generateThread,
@@ -34,11 +10,19 @@ import {
 } from "../services/gemini";
 import Markdown from 'react-markdown';
 import { motion, AnimatePresence } from "motion/react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
 type Tweet = {
   text: string;
   imagePrompt?: string;
-  imageUrl?: string;
+  imageUrl?: string | null;
   isGeneratingImage?: boolean;
 };
 
@@ -71,114 +55,119 @@ const TweetCard: React.FC<{
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.1 }}
-      className="relative bg-white rounded-2xl p-5 shadow-sm border border-slate-200 mr-12"
+      className="relative glass rounded-2xl p-6 shadow-sm border border-border/50 me-10 group"
     >
       {/* Thread Connector Dot */}
-      <div className="absolute top-6 -right-[29px] w-3 h-3 rounded-full bg-blue-500 ring-4 ring-slate-50" />
+      <div className="absolute top-8 -end-[26px] w-3 h-3 rounded-full bg-primary ring-4 ring-background shadow-[0_0_8px_rgba(79,70,229,0.5)] z-10" />
 
-      <div className="flex items-start justify-between gap-4 mb-3">
-        <div className="flex items-center gap-2 text-sm font-medium">
+      <div className="flex items-start justify-between gap-4 mb-4">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm shadow-inner">
+            {index + 1}
+          </div>
           <span
-            className={`px-2 py-1 rounded-md ${isOverLimit ? "bg-red-50 text-red-600" : "bg-slate-100 text-slate-500"}`}
+            className={cn(
+              "text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full",
+              isOverLimit ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"
+            )}
           >
-            {index + 1} • {charCount} حرف
+            {charCount} حرف
           </span>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           {isEditing ? (
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={handleSaveEdit}
-              className="text-emerald-600 hover:bg-emerald-50 transition-colors px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1"
+              className="text-primary hover:text-primary hover:bg-primary/10 h-8"
             >
-              <Check className="w-4 h-4" /> حفظ
-            </button>
+              <Check className="w-4 h-4 ms-1" /> حفظ
+            </Button>
           ) : (
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => setIsEditing(true)}
-              className="text-slate-400 hover:text-blue-600 transition-colors p-1.5 hover:bg-blue-50 rounded-lg"
+              className="text-muted-foreground hover:text-primary h-8 w-8"
               title="تعديل التغريدة"
             >
               <Edit3 className="w-4 h-4" />
-            </button>
+            </Button>
           )}
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={handleCopy}
-            className="text-slate-400 hover:text-blue-600 transition-colors p-1.5 hover:bg-blue-50 rounded-lg"
+            className="text-muted-foreground hover:text-primary h-8 w-8"
             title="نسخ التغريدة"
           >
             {copied ? (
-              <Check className="w-4 h-4 text-emerald-500" />
+              <Check className="w-4 h-4 text-primary" />
             ) : (
               <Copy className="w-4 h-4" />
             )}
-          </button>
+          </Button>
         </div>
       </div>
 
       {isEditing ? (
         <div className="relative">
-          <textarea
+          <Textarea
             value={editText}
             onChange={(e) => setEditText(e.target.value)}
-            className="w-full min-h-[100px] p-3 rounded-xl border border-emerald-200 dark:border-emerald-800 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 outline-none transition-all resize-none bg-emerald-50/50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-[15px] leading-relaxed"
+            className="min-h-[120px] resize-none bg-muted/20 border-primary/20 focus-visible:ring-primary/30"
             dir="auto"
             autoFocus
           />
           <div className="absolute bottom-2 left-2 flex items-center gap-2">
-            <span className={`text-xs font-medium ${editText.length > 280 ? 'text-red-500' : 'text-slate-400'}`}>
+            <span className={cn(
+              "text-[10px] font-bold",
+              editText.length > 280 ? 'text-destructive' : 'text-muted-foreground'
+            )}>
               {editText.length}/280
             </span>
-            {editText && (
-              <button
-                onClick={() => setEditText('')}
-                className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                title="مسح النص"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
           </div>
         </div>
       ) : (
-        <div>
-          <p className="text-slate-800 whitespace-pre-wrap leading-relaxed text-[15px]">
+        <div className="relative group/text">
+          <p className="whitespace-pre-wrap leading-relaxed text-base">
             {tweet.text}
           </p>
-          <div className={`text-left mt-2 text-xs font-medium ${tweet.text.length > 280 ? 'text-red-500' : 'text-slate-400'}`}>
-            {tweet.text.length}/280
-          </div>
         </div>
       )}
 
       {tweet.imageUrl && (
-        <div className="mt-4 rounded-xl overflow-hidden border border-slate-200">
+        <div className="mt-5 rounded-xl overflow-hidden border border-border/50 shadow-inner bg-muted/30">
           <img
             src={tweet.imageUrl}
             alt="Generated for tweet"
-            className="w-full h-auto object-cover"
+            className="w-full h-auto object-cover max-h-[400px]"
           />
         </div>
       )}
 
       {tweet.imagePrompt && !tweet.imageUrl && (
-        <div className="mt-4 pt-4 border-t border-slate-100">
-          <button
+        <div className="mt-5 pt-5 border-t border-border/50">
+          <Button
+            variant="outline"
+            size="sm"
             onClick={onGenerateImage}
             disabled={tweet.isGeneratingImage}
-            className="flex items-center gap-2 text-sm text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-lg transition-colors font-medium disabled:opacity-50"
+            className="w-full sm:w-auto border-dashed hover:bg-primary/5 hover:text-primary hover:border-primary/30 transition-all"
           >
             {tweet.isGeneratingImage ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="w-4 h-4 ml-2 animate-spin" />
                 جاري توليد الصورة...
               </>
             ) : (
               <>
-                <ImageIcon className="w-4 h-4" />
-                توليد صورة مرافقة
+                <ImageIcon className="w-4 h-4 ml-2" />
+                توليد صورة مرافقة بالذكاء الاصطناعي
               </>
             )}
-          </button>
+          </Button>
         </div>
       )}
     </motion.div>
@@ -186,9 +175,10 @@ const TweetCard: React.FC<{
 };
 
 export default function ContentStudio() {
-  const { username, onLogin } = useOutletContext<{ username: string | null, onLogin: () => void }>();
+  const { twitterUser: username, login: onLogin } = useAuth();
   
   const [activeTab, setActiveTab] = useState<'thread' | 'reply' | 'article'>('thread');
+  console.log("activeTab:", activeTab);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [customPrompt, setCustomPrompt] = useState("");
@@ -198,7 +188,10 @@ export default function ContentStudio() {
   const [tweetCount, setTweetCount] = useState<string>("auto");
   const [tweetStyle, setTweetStyle] = useState<string>("auto");
   const [tweetLanguage, setTweetLanguage] = useState<string>("arabic");
+  const [variationsCount, setVariationsCount] = useState<string>("1");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [threadVariations, setThreadVariations] = useState<Tweet[][]>([]);
+  const [activeVariation, setActiveVariation] = useState<number>(0);
   const [thread, setThread] = useState<Tweet[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -218,9 +211,91 @@ export default function ContentStudio() {
 
   const [isPostingToTwitter, setIsPostingToTwitter] = useState(false);
 
+  // Personas state
+  const [personas, setPersonas] = useState<any[]>([]);
+  const [selectedPersonaId, setSelectedPersonaId] = useState<string>('');
+
+  // Templates state
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('none');
+  const [isSavingTemplate, setIsSavingTemplate] = useState(false);
+
+  useEffect(() => {
+    fetchPersonas();
+    fetchTemplates();
+  }, []);
+
   useEffect(() => {
     fetchSuggestions();
-  }, []);
+  }, [selectedPersonaId]);
+
+  const fetchTemplates = async () => {
+    try {
+      const { db } = await import('@/lib/firebase');
+      const { collection, getDocs } = await import('firebase/firestore');
+      const querySnapshot = await getDocs(collection(db, 'templates'));
+      const fetchedTemplates = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setTemplates(fetchedTemplates);
+    } catch (error) {
+      console.error("Failed to fetch templates", error);
+    }
+  };
+
+  const handleSaveTemplate = async () => {
+    if (!customPrompt.trim()) return;
+    setIsSavingTemplate(true);
+    try {
+      const { db } = await import('@/lib/firebase');
+      const { collection, addDoc } = await import('firebase/firestore');
+      const newTemplate = {
+        name: `قالب ${new Date().toLocaleDateString()}`,
+        prompt: customPrompt,
+        tweetCount,
+        tweetStyle,
+        tweetLanguage,
+        createdAt: new Date().toISOString()
+      };
+      const docRef = await addDoc(collection(db, 'templates'), newTemplate);
+      setTemplates([...templates, { id: docRef.id, ...newTemplate }]);
+      alert('تم حفظ القالب بنجاح!');
+    } catch (error) {
+      console.error("Failed to save template", error);
+      alert('فشل حفظ القالب.');
+    } finally {
+      setIsSavingTemplate(false);
+    }
+  };
+
+  const handleApplyTemplate = (templateId: string) => {
+    setSelectedTemplateId(templateId);
+    if (templateId === 'none') return;
+    const template = templates.find(t => t.id === templateId);
+    if (template) {
+      setCustomPrompt(template.prompt);
+      setTweetCount(template.tweetCount || 'auto');
+      setTweetStyle(template.tweetStyle || 'auto');
+      setTweetLanguage(template.tweetLanguage || 'arabic');
+    }
+  };
+
+  const fetchPersonas = async () => {
+    try {
+      const { db } = await import('@/lib/firebase');
+      const { collection, getDocs } = await import('firebase/firestore');
+      const querySnapshot = await getDocs(collection(db, 'personas'));
+      const fetchedPersonas = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setPersonas(fetchedPersonas);
+      if (fetchedPersonas.length > 0) {
+         const defaultPersona = fetchedPersonas.find(p => p.isDefault) || fetchedPersonas.find(p => p.id === 'default') || fetchedPersonas[0];
+         setSelectedPersonaId(defaultPersona.id);
+      } else {
+         setSelectedPersonaId('default');
+      }
+    } catch (error) {
+      console.error("Failed to fetch personas", error);
+      setSelectedPersonaId('default');
+    }
+  };
 
   const handlePostToTwitter = async () => {
     if (!username) {
@@ -298,8 +373,7 @@ export default function ContentStudio() {
       const res = await fetch('/api/twitter/post-thread', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        // We can't post a full article as a single tweet if it's too long, but we'll try or let Twitter API fail
-        body: JSON.stringify({ tweets: [generatedArticle.substring(0, 280)] }) // Just an example, maybe we shouldn't post articles directly to X unless it's a thread
+        body: JSON.stringify({ tweets: [generatedArticle.substring(0, 280)] })
       });
       
       const data = await res.json();
@@ -321,9 +395,10 @@ export default function ContentStudio() {
   };
 
   const fetchSuggestions = async () => {
+    if (!selectedPersonaId) return;
     setIsLoadingSuggestions(true);
     try {
-      const sugs = await getSmartSuggestions();
+      const sugs = await getSmartSuggestions(selectedPersonaId);
       setSuggestions(sugs);
     } catch (err) {
       console.error(err);
@@ -332,13 +407,45 @@ export default function ContentStudio() {
     }
   };
 
+  const saveToHistory = async (prompt: string, content: any, type: string) => {
+    try {
+      const { db } = await import('@/lib/firebase');
+      const { collection, addDoc } = await import('firebase/firestore');
+      await addDoc(collection(db, 'history'), {
+        prompt,
+        content: JSON.stringify(content),
+        type: type || "thread",
+        createdAt: new Date().toISOString()
+      });
+    } catch (err) {
+      console.error("Failed to save to history in Firestore", err);
+    }
+  };
+
   const handleGenerate = async (prompt: string, useSearch: boolean, count: string = tweetCount, style: string = tweetStyle, lang: string = tweetLanguage, isQuickAction: boolean = false) => {
     setIsGenerating(true);
     setError(null);
     setThread([]);
+    setThreadVariations([]);
     try {
-      const result = await generateThread(prompt, useSearch, count, style, lang, threadImage?.base64, threadImage?.mimeType, threadUrl, isQuickAction);
-      setThread(result);
+      const vCount = parseInt(variationsCount);
+      if (vCount > 1) {
+        const promises = Array.from({ length: vCount }).map((_, i) => {
+          const variationPrompt = `${prompt}\n\nملاحظة: هذه هي النسخة رقم ${i + 1}. حاول أن تجعلها مميزة ومختلفة قليلاً في الصياغة عن النسخ الأخرى.`;
+          return generateThread(variationPrompt, useSearch, count, style, lang, threadImage?.base64, threadImage?.mimeType, threadUrl, isQuickAction, selectedPersonaId);
+        });
+        const results = await Promise.all(promises);
+        setThreadVariations(results);
+        setThread(results[0]);
+        setActiveVariation(0);
+        saveToHistory(prompt, results[0], "thread");
+      } else {
+        const result = await generateThread(prompt, useSearch, count, style, lang, threadImage?.base64, threadImage?.mimeType, threadUrl, isQuickAction, selectedPersonaId);
+        setThread(result);
+        setThreadVariations([result]);
+        setActiveVariation(0);
+        saveToHistory(prompt, result, "thread");
+      }
     } catch (err: any) {
       console.error(err);
       setError(err.message || "حدث خطأ أثناء توليد التغريدات.");
@@ -347,9 +454,9 @@ export default function ContentStudio() {
     }
   };
 
-  const handleTodayIdea = () => {
+  const handleTodayTrend = () => {
     handleGenerate(
-      "أعطني فكرة اليوم: ابحث في الويب عن أداة أو تقنية أو خبر جديد في مجالات اهتمامي (صدرت أو تم تحديثها مؤخراً جداً في وقتنا الحالي)، واشرح كيف يمكن الاستفادة منها في 3 خطوات بسيطة على شكل مسودة ثريد جاهزة للنشر.",
+      "ابحث في الويب عن تريند اليوم (Trend of the Day) أو أكثر المواضيع تداولاً حالياً في مجالات اهتمامي. قم بتحليل هذا التريند واكتب ثريداً يشرح ماهيته، لماذا هو رائج الآن، وكيف يمكن للمتابعين الاستفادة منه أو التفاعل معه بشكل ذكي.",
       true, tweetCount, tweetStyle, tweetLanguage, true
     );
   };
@@ -432,6 +539,35 @@ export default function ContentStudio() {
     reader.readAsDataURL(file);
   };
 
+  const handlePasteImage = (e: React.ClipboardEvent<HTMLTextAreaElement>, type: 'thread' | 'reply') => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        const file = items[i].getAsFile();
+        if (!file) continue;
+        
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          if (event.target?.result) {
+            const imageData = {
+              url: URL.createObjectURL(file),
+              base64: event.target.result as string,
+              mimeType: file.type
+            };
+            if (type === 'thread') {
+              setThreadImage(imageData);
+            } else {
+              setReplyImage(imageData);
+            }
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+  };
+
   const handleGenerateReply = async () => {
     if (!replyPrompt.trim() && !replyImage) return;
     
@@ -444,9 +580,11 @@ export default function ContentStudio() {
         replyPrompt || "اكتب رداً احترافياً على هذا المنشور.", 
         replyImage?.base64, 
         replyImage?.mimeType,
-        replyTone
+        replyTone,
+        selectedPersonaId
       );
       setGeneratedReply(result);
+      saveToHistory(replyPrompt || "رد على منشور", result, "reply");
     } catch (err: any) {
       console.error(err);
       setError(err.message || "حدث خطأ أثناء توليد الرد.");
@@ -471,8 +609,9 @@ export default function ContentStudio() {
     setGeneratedArticle(null);
     
     try {
-      const result = await generateArticle(articlePrompt, true);
+      const result = await generateArticle(articlePrompt, true, selectedPersonaId);
       setGeneratedArticle(result);
+      saveToHistory(articlePrompt, result, "article");
     } catch (err: any) {
       console.error(err);
       setError(err.message || "حدث خطأ أثناء كتابة المقال.");
@@ -491,273 +630,360 @@ export default function ContentStudio() {
 
   return (
     <motion.div 
+      dir="rtl"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="font-cairo text-slate-900 dark:text-slate-100 selection:bg-emerald-200 dark:selection:bg-emerald-900"
+      className="pb-12"
     >
-      <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
-            <PenTool className="text-emerald-500 w-6 h-6 md:w-8 md:h-8" />
+      <div className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
+            <div className="p-2 bg-primary/10 rounded-xl">
+              <PenTool className="text-primary w-6 h-6" />
+            </div>
             استوديو المحتوى
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-2 text-sm md:text-base">قم بإنشاء خيوط تغريدات (Threads) ومقالات احترافية باستخدام الذكاء الاصطناعي</p>
+          <p className="text-muted-foreground text-sm max-w-2xl">قم بإنشاء خيوط تغريدات (Threads) ومقالات احترافية باستخدام الذكاء الاصطناعي المتقدم.</p>
         </div>
-        <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl overflow-x-auto whitespace-nowrap border border-slate-200 dark:border-slate-700">
-          <button
-            onClick={() => setActiveTab('thread')}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'thread' ? 'bg-white dark:bg-slate-700 shadow-sm text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
-          >
-            صانع الثريدات
-          </button>
-          <button
-            onClick={() => setActiveTab('reply')}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'reply' ? 'bg-white dark:bg-slate-700 shadow-sm text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
-          >
-            الردود الذكية
-          </button>
-          <button
-            onClick={() => setActiveTab('article')}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${activeTab === 'article' ? 'bg-white dark:bg-slate-700 shadow-sm text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
-          >
-            كتابة المقالات
-          </button>
-        </div>
+        {personas.length > 0 && (
+          <div className="flex items-center gap-3 bg-muted/50 p-2 rounded-xl border border-border/50">
+            <Label className="text-sm font-medium text-foreground whitespace-nowrap">الشخصية:</Label>
+            <Select value={selectedPersonaId} onValueChange={setSelectedPersonaId} dir="rtl">
+              <SelectTrigger className="w-[200px] bg-background border-border/50">
+                <SelectValue placeholder="اختر الشخصية" />
+              </SelectTrigger>
+              <SelectContent>
+                {personas.map(p => (
+                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
-      <main className="max-w-6xl mx-auto">
-        {activeTab === 'thread' && (
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="max-w-6xl mx-auto" dir="rtl">
+        <TabsList className="mb-10 glass p-1 border border-border/50 rounded-xl">
+          <TabsTrigger value="thread" className="rounded-lg px-6 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">صانع الثريدات</TabsTrigger>
+          <TabsTrigger value="reply" className="rounded-lg px-6 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">الردود الذكية</TabsTrigger>
+          <TabsTrigger value="article" className="rounded-lg px-6 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">كتابة المقالات</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="thread">
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="grid grid-cols-1 lg:grid-cols-12 gap-8"
           >
             {/* Sidebar / Controls */}
-            <div className="lg:col-span-4 space-y-6">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 shadow-sm border border-emerald-100 dark:border-emerald-900/50">
-            <h2 className="text-lg font-bold mb-4 flex items-center gap-2 dark:text-white">
-              <Zap className="w-5 h-5 text-amber-500" />
-              إجراءات سريعة
-            </h2>
-            <div className="space-y-3">
-              <button
-                onClick={handleTodayIdea}
-                disabled={isGenerating}
-                className="w-full flex items-center justify-between p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors disabled:opacity-50"
-              >
-                <span className="font-semibold">فكرة اليوم 💡</span>
-                <Search className="w-4 h-4" />
-              </button>
-              <button
-                onClick={handleQuickGenerate}
-                disabled={isGenerating}
-                className="w-full flex items-center justify-between p-3 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors disabled:opacity-50"
-              >
-                <span className="font-semibold">توليد سريع ⚡</span>
-                <Sparkles className="w-4 h-4" />
-              </button>
-              <button
-                onClick={handleMotivational}
-                disabled={isGenerating}
-                className="w-full flex items-center justify-between p-3 rounded-xl bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors disabled:opacity-50"
-              >
-                <span className="font-semibold">ثريد تحفيزي 🚀</span>
-                <Target className="w-4 h-4" />
-              </button>
-              <button
-                onClick={handleAdvice}
-                disabled={isGenerating}
-                className="w-full flex items-center justify-between p-3 rounded-xl bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors disabled:opacity-50"
-              >
-                <span className="font-semibold">نصيحة مهنية 🎯</span>
-                <Lightbulb className="w-4 h-4" />
-              </button>
-              <button
-                onClick={handleControversial}
-                disabled={isGenerating}
-                className="w-full flex items-center justify-between p-3 rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors disabled:opacity-50"
-              >
-                <span className="font-semibold">رأي جدلي 🔥</span>
-                <Flame className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold flex items-center gap-2">
-                <Bot className="w-5 h-5 text-indigo-500" />
-                اقتراحات ذكية
-              </h2>
-              <button
-                onClick={fetchSuggestions}
-                disabled={isLoadingSuggestions}
-                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-              >
-                <RefreshCw
-                  className={`w-4 h-4 ${isLoadingSuggestions ? "animate-spin" : ""}`}
-                />
-              </button>
-            </div>
-
-            <div className="space-y-2">
-              {isLoadingSuggestions ? (
-                <div className="flex justify-center py-4">
-                  <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
-                </div>
-              ) : suggestions.length > 0 ? (
-                suggestions.map((sug, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setCustomPrompt(`اكتب ثريد عن: ${sug}`)}
-                    className="w-full text-right p-3 rounded-xl border border-slate-100 hover:border-indigo-200 hover:bg-indigo-50 text-sm text-slate-700 transition-colors"
+            <div className="lg:col-span-4 space-y-6 order-2 lg:order-2">
+              <Card className="glass border-border/50 shadow-sm overflow-hidden">
+                <CardHeader className="pb-3 bg-muted/50 border-b border-border/50">
+                  <CardTitle className="text-sm font-bold uppercase tracking-wider text-primary flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-amber-500" />
+                    إجراءات سريعة
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 pt-4">
+                  <Button
+                    variant="ghost"
+                    onClick={handleTodayTrend}
+                    disabled={isGenerating}
+                    className="w-full justify-between hover:bg-primary/10 hover:text-primary group transition-all"
                   >
-                    {sug}
-                  </button>
-                ))
-              ) : (
-                <div className="text-sm text-slate-500 text-center py-2">
-                  لا توجد اقتراحات حالياً
-                </div>
-              )}
+                    <span className="text-sm">تريند اليوم</span>
+                    <Search className="w-4 h-4 opacity-40 group-hover:opacity-100" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={handleQuickGenerate}
+                    disabled={isGenerating}
+                    className="w-full justify-between hover:bg-primary/10 hover:text-primary group transition-all"
+                  >
+                    <span className="text-sm">توليد سريع</span>
+                    <Sparkles className="w-4 h-4 opacity-40 group-hover:opacity-100" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={handleMotivational}
+                    disabled={isGenerating}
+                    className="w-full justify-between hover:bg-primary/5 hover:text-primary group transition-all"
+                  >
+                    <span className="text-sm">ثريد تحفيزي</span>
+                    <Target className="w-4 h-4 opacity-40 group-hover:opacity-100" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={handleAdvice}
+                    disabled={isGenerating}
+                    className="w-full justify-between hover:bg-primary/5 hover:text-primary group transition-all"
+                  >
+                    <span className="text-sm">نصيحة مهنية</span>
+                    <Lightbulb className="w-4 h-4 opacity-40 group-hover:opacity-100" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={handleControversial}
+                    disabled={isGenerating}
+                    className="w-full justify-between hover:bg-primary/5 hover:text-primary group transition-all"
+                  >
+                    <span className="text-sm">رأي جدلي</span>
+                    <Flame className="w-4 h-4 opacity-40 group-hover:opacity-100" />
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card className="glass border-border/50 shadow-sm overflow-hidden">
+                <CardHeader className="pb-3 bg-muted/50 border-b border-border/50 flex flex-row items-center justify-between">
+                  <CardTitle className="text-sm font-bold uppercase tracking-wider text-primary flex items-center gap-2">
+                    <Bot className="w-4 h-4 text-indigo-500" />
+                    اقتراحات ذكية
+                  </CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={fetchSuggestions}
+                    disabled={isLoadingSuggestions}
+                    className="h-6 w-6 hover:bg-primary/10 hover:text-primary"
+                  >
+                    <RefreshCw className={cn("w-3 h-3", isLoadingSuggestions && "animate-spin")} />
+                  </Button>
+                </CardHeader>
+                <CardContent className="space-y-2 pt-4">
+                  {isLoadingSuggestions ? (
+                    <div className="flex justify-center py-8">
+                      <Loader2 className="w-6 h-6 animate-spin text-primary/40" />
+                    </div>
+                  ) : suggestions.length > 0 ? (
+                    suggestions.map((sug, i) => (
+                      <Button
+                        key={i}
+                        variant="ghost"
+                        onClick={() => setCustomPrompt(`اكتب ثريد عن: ${sug}`)}
+                        className="w-full justify-start text-start h-auto whitespace-normal p-3 font-normal text-sm hover:bg-primary/10 hover:text-primary border border-transparent hover:border-primary/20"
+                      >
+                        {sug}
+                      </Button>
+                    ))
+                  ) : (
+                    <div className="text-xs text-muted-foreground text-center py-4 italic">
+                      لا توجد اقتراحات حالياً
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </div>
-          </div>
-        </div>
 
             {/* Main Content */}
-            <div className="lg:col-span-8 space-y-6">
-              <div className="bg-white dark:bg-slate-900 rounded-2xl p-2 shadow-sm border border-emerald-100 dark:border-emerald-900/50 focus-within:border-emerald-400 focus-within:ring-1 focus-within:ring-emerald-400 transition-all relative">
-                {threadImage && (
-                  <div className="relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 mb-2 mx-2 mt-2">
-                    <img src={threadImage.url} alt="Thread context" className="w-full max-h-48 object-contain" />
-                    <button 
-                      onClick={() => setThreadImage(null)}
-                      className="absolute top-2 right-2 p-1.5 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm rounded-lg text-slate-600 dark:text-slate-300 hover:text-red-600 dark:hover:text-red-400 hover:bg-white dark:hover:bg-slate-800 transition-colors"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
-                <div className="relative">
-                  <textarea
-                    value={customPrompt}
-                    onChange={(e) => setCustomPrompt(e.target.value)}
-                    placeholder="اكتب فكرتك هنا، أو الصق خبراً لتحويله إلى ثريد..."
-                    className="w-full min-h-[120px] p-3 resize-none outline-none bg-transparent dark:text-white"
-                    dir="auto"
-                  />
-                  {customPrompt && (
-                    <button
-                      onClick={() => setCustomPrompt('')}
-                      className="absolute top-2 left-2 p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                      title="مسح النص"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-                {showUrlInput && (
-                  <div className="px-3 pb-3">
-                    <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500 transition-all">
-                      <Link className="w-4 h-4 text-slate-400" />
-                      <input
-                        type="url"
-                        value={threadUrl}
-                        onChange={(e) => setThreadUrl(e.target.value)}
-                        placeholder="أدخل رابط التغريدة أو المقال هنا..."
-                        className="w-full bg-transparent outline-none text-sm text-slate-700 dark:text-slate-200"
-                        dir="ltr"
-                      />
-                      <button onClick={() => { setShowUrlInput(false); setThreadUrl(""); }} className="text-slate-400 hover:text-red-500">
+            <div className="lg:col-span-8 space-y-8 order-1 lg:order-1">
+              <Card className="glass border-border/50 shadow-md overflow-hidden ring-1 ring-primary/5">
+                <div className="p-1">
+                  {threadImage && (
+                    <div className="relative rounded-xl overflow-hidden border border-border/50 bg-muted/50 mb-2 mx-2 mt-2 group">
+                      <img src={threadImage.url} alt="Thread context" className="w-full max-h-64 object-contain" />
+                      <Button 
+                        variant="destructive"
+                        size="icon"
+                        onClick={() => setThreadImage(null)}
+                        className="absolute top-2 left-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
                         <X className="w-4 h-4" />
-                      </button>
+                      </Button>
                     </div>
-                  </div>
-                )}
-                <div className="flex flex-col items-start justify-between p-2 border-t border-slate-100 dark:border-slate-800 gap-3">
-                  <div className="flex flex-wrap items-center gap-2 w-full">
-                    <label className="flex items-center justify-center p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400" title="إرفاق صورة">
-                      <ImageIcon className="w-4 h-4" />
-                      <input type="file" className="hidden" accept="image/*" onChange={(e) => handleImageUpload(e, 'thread')} />
-                    </label>
-                    <button
-                      onClick={() => setShowUrlInput(!showUrlInput)}
-                      className={`flex items-center justify-center p-2 border rounded-lg transition-colors ${showUrlInput || threadUrl ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-emerald-600'}`}
-                      title="إرفاق رابط"
-                    >
-                      <Link className="w-4 h-4" />
-                    </button>
-                    <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-2 focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500 transition-all flex-1 min-w-[120px]">
-                      <Settings2 className="w-4 h-4 text-slate-400 shrink-0" />
-                      <select
-                        value={tweetCount}
-                        onChange={(e) => setTweetCount(e.target.value)}
-                        className="bg-transparent text-slate-700 text-sm block py-2 outline-none cursor-pointer w-full"
+                  )}
+                  <div className="relative px-4 pt-4">
+                    <Textarea
+                      value={customPrompt}
+                      onChange={(e) => setCustomPrompt(e.target.value)}
+                      onPaste={(e) => handlePasteImage(e, 'thread')}
+                      placeholder="اكتب فكرتك هنا، أو الصق خبراً لتحويله إلى ثريد..."
+                      className="min-h-[160px] border-0 focus-visible:ring-0 resize-none bg-transparent text-lg placeholder:text-muted-foreground/50"
+                      dir="auto"
+                    />
+                    {customPrompt && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setCustomPrompt("")}
+                        className="absolute top-2 left-2 h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        title="مسح النص"
                       >
-                        <option value="auto">طول تلقائي</option>
-                        <option value="1">تغريدة يتيمة</option>
-                        <option value="3">3 تغريدات</option>
-                        <option value="5">5 تغريدات</option>
-                        <option value="7">7 تغريدات</option>
-                        <option value="10">10 تغريدات</option>
-                      </select>
-                    </div>
-                    <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-2 focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500 transition-all flex-1 min-w-[120px]">
-                      <Palette className="w-4 h-4 text-slate-400 shrink-0" />
-                      <select
-                        value={tweetStyle}
-                        onChange={(e) => setTweetStyle(e.target.value)}
-                        className="bg-transparent text-slate-700 text-sm block py-2 outline-none cursor-pointer w-full"
-                      >
-                        <option value="auto">أسلوب تلقائي</option>
-                        <option value="formal">رسمي</option>
-                        <option value="sarcastic">ساخر</option>
-                        <option value="surreal">سيريالي</option>
-                        <option value="comedic">كوميدي</option>
-                        <option value="storytelling">قصصي</option>
-                        <option value="educational">تعليمي مبسط</option>
-                        <option value="philosophical">فلسفي</option>
-                      </select>
-                    </div>
-                    <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-2 focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500 transition-all flex-1 min-w-[100px]">
-                      <Globe className="w-4 h-4 text-slate-400 shrink-0" />
-                      <select
-                        value={tweetLanguage}
-                        onChange={(e) => setTweetLanguage(e.target.value)}
-                        className="bg-transparent text-slate-700 text-sm block py-2 outline-none cursor-pointer w-full"
-                      >
-                        <option value="arabic">العربية</option>
-                        <option value="english">English</option>
-                        <option value="french">Français</option>
-                        <option value="spanish">Español</option>
-                      </select>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => handleGenerate(customPrompt, true, tweetCount, tweetStyle, tweetLanguage)}
-                    disabled={!customPrompt.trim() || isGenerating}
-                    className="w-full flex items-center justify-center gap-2 bg-emerald-600 text-white px-6 py-2.5 rounded-xl font-medium hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2"
-                  >
-                    {isGenerating ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        جاري التوليد...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-4 h-4" />
-                        توليد الثريد
-                      </>
+                        <X className="w-4 h-4" />
+                      </Button>
                     )}
-                  </button>
+                  </div>
+                  {showUrlInput && (
+                    <div className="px-4 pb-4">
+                      <div className="flex items-center gap-3 bg-primary/10 rounded-xl px-4 py-3 border border-border/50">
+                        <Link className="w-4 h-4 text-primary" />
+                        <Input
+                          type="url"
+                          value={threadUrl}
+                          onChange={(e) => setThreadUrl(e.target.value)}
+                          placeholder="أدخل رابط التغريدة أو المقال هنا..."
+                          className="border-0 bg-transparent h-8 focus-visible:ring-0 text-sm"
+                          dir="ltr"
+                        />
+                        <Button variant="ghost" size="icon" onClick={() => { setShowUrlInput(false); setThreadUrl(""); }} className="h-8 w-8 text-muted-foreground hover:text-destructive">
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex flex-col items-stretch p-4 border-t border-border/50 bg-muted/30 gap-4">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <Label className="flex items-center justify-center h-10 px-3 border rounded-xl cursor-pointer hover:bg-muted transition-all text-muted-foreground hover:text-primary hover:border-primary/30" title="إرفاق صورة">
+                        <ImageIcon className="w-4 h-4 ms-2" />
+                        <span className="text-xs font-bold uppercase tracking-wider">صورة</span>
+                        <input type="file" className="hidden" accept="image/*" onChange={(e) => handleImageUpload(e, 'thread')} />
+                      </Label>
+                      <Button
+                        variant={showUrlInput || threadUrl ? "secondary" : "outline"}
+                        size="sm"
+                        onClick={() => setShowUrlInput(!showUrlInput)}
+                        className="h-10 rounded-xl gap-2"
+                      >
+                        <Link className="w-4 h-4" />
+                        <span className="text-xs font-bold uppercase tracking-wider">رابط</span>
+                      </Button>
+                      
+                      <div className="h-6 w-[1px] bg-border/50 mx-1 hidden sm:block" />
+
+                      <Select value={tweetCount} onValueChange={(v) => v && setTweetCount(v)} dir="rtl">
+                        <SelectTrigger className="w-[130px] h-10 rounded-xl bg-background border-border/50">
+                          <Settings2 className="w-4 h-4 ms-2 text-muted-foreground" />
+                          <SelectValue placeholder="الطول" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="auto">طول تلقائي</SelectItem>
+                          <SelectItem value="1">تغريدة يتيمة</SelectItem>
+                          <SelectItem value="3">3 تغريدات</SelectItem>
+                          <SelectItem value="5">5 تغريدات</SelectItem>
+                          <SelectItem value="7">7 تغريدات</SelectItem>
+                          <SelectItem value="10">10 تغريدات</SelectItem>
+                        </SelectContent>
+                      </Select>
+
+                      <Select value={tweetStyle} onValueChange={(v) => v && setTweetStyle(v)} dir="rtl">
+                        <SelectTrigger className="w-[130px] h-10 rounded-xl bg-background border-border/50">
+                          <Palette className="w-4 h-4 ms-2 text-muted-foreground" />
+                          <SelectValue placeholder="الأسلوب" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="auto">أسلوب تلقائي</SelectItem>
+                          <SelectItem value="formal">رسمي</SelectItem>
+                          <SelectItem value="sarcastic">ساخر</SelectItem>
+                          <SelectItem value="surreal">سيريالي</SelectItem>
+                          <SelectItem value="comedic">كوميدي</SelectItem>
+                          <SelectItem value="storytelling">قصصي</SelectItem>
+                          <SelectItem value="educational">تعليمي مبسط</SelectItem>
+                          <SelectItem value="philosophical">فلسفي</SelectItem>
+                        </SelectContent>
+                      </Select>
+
+                      <Select value={tweetLanguage} onValueChange={(v) => v && setTweetLanguage(v)} dir="rtl">
+                        <SelectTrigger className="w-[110px] h-10 rounded-xl bg-background border-border/50">
+                          <Globe className="w-4 h-4 ml-2 text-muted-foreground" />
+                          <SelectValue placeholder="اللغة" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="arabic">العربية</SelectItem>
+                          <SelectItem value="english">English</SelectItem>
+                          <SelectItem value="french">Français</SelectItem>
+                          <SelectItem value="spanish">Español</SelectItem>
+                        </SelectContent>
+                      </Select>
+
+                      <Select value={variationsCount} onValueChange={(v) => v && setVariationsCount(v)} dir="rtl">
+                        <SelectTrigger className="w-[140px] h-10 rounded-xl text-primary border-primary/20 bg-primary/5 font-bold">
+                          <Sparkles className="w-4 h-4 ml-2" />
+                          <SelectValue placeholder="النسخ" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1">نسخة واحدة</SelectItem>
+                          <SelectItem value="2">نسختين (A/B Test)</SelectItem>
+                          <SelectItem value="3">3 نسخ مختلفة</SelectItem>
+                        </SelectContent>
+                      </Select>
+
+                      <div className="h-6 w-[1px] bg-border/50 mx-1 hidden sm:block" />
+
+                      <Select value={selectedTemplateId} onValueChange={handleApplyTemplate} dir="rtl">
+                        <SelectTrigger className="w-[150px] h-10 rounded-xl bg-background border-border/50">
+                          <FileText className="w-4 h-4 ml-2 text-muted-foreground" />
+                          <SelectValue placeholder="القوالب المحفوظة" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">بدون قالب</SelectItem>
+                          {templates.map(t => (
+                            <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleSaveTemplate}
+                        disabled={!customPrompt.trim() || isSavingTemplate}
+                        className="h-10 rounded-xl gap-2"
+                      >
+                        {isSavingTemplate ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                        <span className="text-xs font-bold uppercase tracking-wider">حفظ كقالب</span>
+                      </Button>
+                    </div>
+                    <Button
+                      onClick={() => handleGenerate(customPrompt, true, tweetCount, tweetStyle, tweetLanguage)}
+                      disabled={!customPrompt.trim() || isGenerating}
+                      size="lg"
+                      className="w-full h-12 text-lg font-bold shadow-lg shadow-primary/20"
+                    >
+                      {isGenerating ? (
+                        <>
+                          <Loader2 className="w-5 h-5 ml-2 animate-spin" />
+                          جاري توليد المحتوى...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-5 h-5 ml-2" />
+                          توليد الثريد الآن
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              </Card>
 
               {error && (
-                <div className="bg-red-50 text-red-600 p-4 rounded-xl text-sm border border-red-100">
+                <div className="bg-destructive/10 text-destructive p-4 rounded-xl text-sm border border-destructive/20">
                   {error}
                 </div>
               )}
+
+              <AnimatePresence>
+                {threadVariations.length > 1 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex items-center gap-2 bg-indigo-50/50 p-2 rounded-xl border border-indigo-100 overflow-x-auto"
+                  >
+                    <span className="text-sm font-bold text-indigo-800 px-2 whitespace-nowrap">اختر النسخة الأفضل:</span>
+                    {threadVariations.map((_, idx) => (
+                      <Button
+                        key={idx}
+                        variant={activeVariation === idx ? "default" : "outline"}
+                        onClick={() => {
+                          setActiveVariation(idx);
+                          setThread(threadVariations[idx]);
+                        }}
+                        className={activeVariation === idx ? "bg-indigo-600 hover:bg-indigo-700" : "text-indigo-600 border-indigo-200"}
+                      >
+                        النسخة {idx + 1}
+                      </Button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               <AnimatePresence>
                 {thread.length > 0 && (
@@ -767,25 +993,25 @@ export default function ContentStudio() {
                     className="space-y-4"
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between px-1 gap-3">
-                      <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
-                        <Twitter className="w-5 h-5 text-emerald-500" />
+                      <h3 className="font-bold text-lg flex items-center gap-2">
+                        <Twitter className="w-5 h-5 text-primary" />
                         الثريد الجاهز ({thread.length} تغريدات)
                       </h3>
-                      <button
+                      <Button
                         onClick={handlePostToTwitter}
                         disabled={isPostingToTwitter}
-                        className="flex items-center justify-center gap-2 px-4 py-2 bg-black text-white rounded-xl font-bold hover:bg-slate-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm w-full sm:w-auto"
+                        className="w-full sm:w-auto"
                       >
                         {isPostingToTwitter ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <Loader2 className="w-4 h-4 ml-2 animate-spin" />
                         ) : (
-                          <Twitter className="w-4 h-4" />
+                          <Twitter className="w-4 h-4 ml-2" />
                         )}
                         نشر الثريد على X
-                      </button>
+                      </Button>
                     </div>
 
-                    <div className="space-y-4 relative before:absolute before:inset-y-4 before:right-6 before:w-0.5 before:bg-slate-200">
+                    <div className="space-y-4 relative before:absolute before:inset-y-4 before:right-6 before:w-0.5 before:bg-border">
                       {thread.map((tweet, index) => (
                         <TweetCard
                           key={index}
@@ -801,261 +1027,266 @@ export default function ContentStudio() {
               </AnimatePresence>
             </div>
           </motion.div>
-        )}
-          
-        {activeTab === 'reply' && (
+        </TabsContent>
+
+        <TabsContent value="reply">
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             className="max-w-3xl mx-auto space-y-6"
           >
-              <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-                <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
                   <MessageCircleReply className="w-5 h-5 text-indigo-500" />
                   صياغة رد احترافي
-                </h2>
-                
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      صورة المنشور (اختياري)
-                    </label>
-                    {replyImage ? (
-                      <div className="relative rounded-xl overflow-hidden border border-slate-200 bg-slate-50">
-                        <img src={replyImage.url} alt="Post to reply to" className="w-full max-h-64 object-contain" />
-                        <button 
-                          onClick={() => setReplyImage(null)}
-                          className="absolute top-2 right-2 p-1.5 bg-white/80 backdrop-blur-sm rounded-lg text-slate-600 hover:text-red-600 hover:bg-white transition-colors"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label className="mb-2 block">صورة المنشور (اختياري)</Label>
+                  {replyImage ? (
+                    <div className="relative rounded-xl overflow-hidden border bg-muted">
+                      <img src={replyImage.url} alt="Post to reply to" className="w-full max-h-64 object-contain" />
+                      <Button 
+                        variant="secondary"
+                        size="icon"
+                        onClick={() => setReplyImage(null)}
+                        className="absolute top-2 left-2 h-8 w-8"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <Label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-xl cursor-pointer bg-muted/50 hover:bg-muted transition-colors">
+                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                        <Upload className="w-6 h-6 text-muted-foreground mb-2" />
+                        <p className="text-sm text-muted-foreground">اضغط لرفع صورة المنشور</p>
                       </div>
-                    ) : (
-                      <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-slate-200 border-dashed rounded-xl cursor-pointer bg-slate-50 hover:bg-slate-100 transition-colors">
-                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                          <Upload className="w-6 h-6 text-slate-400 mb-2" />
-                          <p className="text-sm text-slate-500">اضغط لرفع صورة المنشور</p>
-                        </div>
-                        <input type="file" className="hidden" accept="image/*" onChange={(e) => handleImageUpload(e, 'reply')} />
-                      </label>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      نبرة الرد
-                    </label>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      <button
-                        onClick={() => setReplyTone('professional')}
-                        className={`p-2 rounded-xl text-sm font-medium transition-colors border ${replyTone === 'professional' ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
-                      >
-                        احترافية
-                      </button>
-                      <button
-                        onClick={() => setReplyTone('friendly')}
-                        className={`p-2 rounded-xl text-sm font-medium transition-colors border ${replyTone === 'friendly' ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
-                      >
-                        ودية
-                      </button>
-                      <button
-                        onClick={() => setReplyTone('analytical')}
-                        className={`p-2 rounded-xl text-sm font-medium transition-colors border ${replyTone === 'analytical' ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
-                      >
-                        تحليلية
-                      </button>
-                      <button
-                        onClick={() => setReplyTone('quote')}
-                        className={`p-2 rounded-xl text-sm font-medium transition-colors border ${replyTone === 'quote' ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
-                      >
-                        تعليق/اقتباس
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                      توجيهات الرد (اختياري)
-                    </label>
-                    <div className="relative">
-                      <textarea
-                        value={replyPrompt}
-                        onChange={(e) => setReplyPrompt(e.target.value)}
-                        placeholder="مثال: اكتب رداً داعماً يضيف معلومة جديدة عن أتمتة المحاسبة..."
-                        className="w-full min-h-[100px] p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 outline-none transition-all resize-none"
-                        dir="auto"
-                      />
-                      {replyPrompt && (
-                        <button
-                          onClick={() => setReplyPrompt('')}
-                          className="absolute top-2 left-2 p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                          title="مسح النص"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={handleGenerateReply}
-                    disabled={isGeneratingReply || (!replyPrompt.trim() && !replyImage)}
-                    className="w-full flex items-center justify-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-xl font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isGeneratingReply ? (
-                      <>
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        جاري صياغة الرد...
-                      </>
-                    ) : (
-                      <>
-                        <MessageCircleReply className="w-5 h-5" />
-                        توليد الرد
-                      </>
-                    )}
-                  </button>
+                      <input type="file" className="hidden" accept="image/*" onChange={(e) => handleImageUpload(e, 'reply')} />
+                    </Label>
+                  )}
                 </div>
+
+                <div>
+                  <Label className="mb-2 block">نبرة الرد</Label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <Button
+                      variant={replyTone === 'professional' ? 'default' : 'outline'}
+                      onClick={() => setReplyTone('professional')}
+                      className={replyTone === 'professional' ? 'bg-indigo-600 hover:bg-indigo-700' : ''}
+                    >
+                      احترافية
+                    </Button>
+                    <Button
+                      variant={replyTone === 'friendly' ? 'default' : 'outline'}
+                      onClick={() => setReplyTone('friendly')}
+                      className={replyTone === 'friendly' ? 'bg-indigo-600 hover:bg-indigo-700' : ''}
+                    >
+                      ودية
+                    </Button>
+                    <Button
+                      variant={replyTone === 'analytical' ? 'default' : 'outline'}
+                      onClick={() => setReplyTone('analytical')}
+                      className={replyTone === 'analytical' ? 'bg-indigo-600 hover:bg-indigo-700' : ''}
+                    >
+                      تحليلية
+                    </Button>
+                    <Button
+                      variant={replyTone === 'quote' ? 'default' : 'outline'}
+                      onClick={() => setReplyTone('quote')}
+                      className={replyTone === 'quote' ? 'bg-indigo-600 hover:bg-indigo-700' : ''}
+                    >
+                      تعليق/اقتباس
+                    </Button>
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="mb-2 block">توجيهات الرد (اختياري)</Label>
+                  <div className="relative">
+                    <Textarea
+                      value={replyPrompt}
+                      onChange={(e) => setReplyPrompt(e.target.value)}
+                      onPaste={(e) => handlePasteImage(e, 'reply')}
+                      placeholder="مثال: اكتب رداً داعماً يضيف معلومة جديدة عن أتمتة المحاسبة..."
+                      className="min-h-[100px] resize-none"
+                      dir="auto"
+                    />
+                    {replyPrompt && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setReplyPrompt('')}
+                        className="absolute top-2 left-2 h-8 w-8 text-muted-foreground hover:text-destructive"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <Button
+                  onClick={handleGenerateReply}
+                  disabled={isGeneratingReply || (!replyPrompt.trim() && !replyImage)}
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
+                >
+                  {isGeneratingReply ? (
+                    <>
+                      <Loader2 className="w-5 h-5 ml-2 animate-spin" />
+                      جاري صياغة الرد...
+                    </>
+                  ) : (
+                    <>
+                      <MessageCircleReply className="w-5 h-5 ml-2" />
+                      توليد الرد
+                    </>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+
+            {error && (
+              <div className="bg-destructive/10 text-destructive p-4 rounded-xl text-sm border border-destructive/20">
+                {error}
               </div>
+            )}
 
-              {error && (
-                <div className="bg-red-50 text-red-600 p-4 rounded-xl text-sm border border-red-100">
-                  {error}
-                </div>
-              )}
-
-              <AnimatePresence>
-                {generatedReply && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-white rounded-2xl p-5 shadow-sm border border-indigo-100 relative overflow-hidden"
-                  >
-                    <div className="absolute top-0 right-0 w-1 h-full bg-indigo-500" />
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-3">
-                      <h3 className="font-bold text-slate-800">الرد المقترح</h3>
-                      <div className="flex items-center gap-2 w-full sm:w-auto">
-                        <button
-                          onClick={handlePostReplyToTwitter}
-                          disabled={isPostingToTwitter}
-                          className="text-white bg-black hover:bg-slate-800 transition-colors px-3 py-1.5 rounded-lg flex items-center justify-center gap-1 text-sm font-medium disabled:opacity-50 flex-1 sm:flex-none"
-                        >
-                          {isPostingToTwitter ? <Loader2 className="w-4 h-4 animate-spin" /> : <Twitter className="w-4 h-4" />}
-                          نشر
-                        </button>
-                        <button 
-                          onClick={handleCopyReply}
-                          className="text-slate-400 hover:text-indigo-600 transition-colors p-1.5 hover:bg-indigo-50 rounded-lg flex items-center justify-center gap-1 text-sm flex-1 sm:flex-none"
-                        >
-                          {replyCopied ? (
-                            <><Check className="w-4 h-4 text-emerald-500" /> تم النسخ</>
-                          ) : (
-                            <><Copy className="w-4 h-4" /> نسخ الرد</>
-                          )}
-                        </button>
-                      </div>
+            <AnimatePresence>
+              {generatedReply && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-card rounded-2xl p-5 shadow-sm border border-indigo-100 relative overflow-hidden"
+                >
+                  <div className="absolute top-0 right-0 w-1 h-full bg-indigo-500" />
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-3">
+                    <h3 className="font-bold">الرد المقترح</h3>
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <Button
+                        onClick={handlePostReplyToTwitter}
+                        disabled={isPostingToTwitter}
+                        className="flex-1 sm:flex-none"
+                      >
+                        {isPostingToTwitter ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : <Twitter className="w-4 h-4 ml-2" />}
+                        نشر
+                      </Button>
+                      <Button 
+                        variant="outline"
+                        onClick={handleCopyReply}
+                        className="flex-1 sm:flex-none"
+                      >
+                        {replyCopied ? (
+                          <><Check className="w-4 h-4 ml-2 text-primary" /> تم النسخ</>
+                        ) : (
+                          <><Copy className="w-4 h-4 ml-2" /> نسخ الرد</>
+                        )}
+                      </Button>
                     </div>
-                    <p className="text-slate-700 whitespace-pre-wrap leading-relaxed">
-                      {generatedReply}
-                    </p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
-        )}
+                  </div>
+                  <p className="whitespace-pre-wrap leading-relaxed">
+                    {generatedReply}
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        </TabsContent>
 
-        {activeTab === 'article' && (
+        <TabsContent value="article">
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             className="max-w-4xl mx-auto space-y-6"
           >
-              <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-                <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-emerald-500" />
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-primary" />
                   كتابة مقال احترافي
-                </h2>
-                
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                      موضوع المقال
-                    </label>
-                    <div className="relative">
-                      <textarea
-                        value={articlePrompt}
-                        onChange={(e) => setArticlePrompt(e.target.value)}
-                        placeholder="اكتب موضوع المقال أو الفكرة التي تريد الكتابة عنها بالتفصيل..."
-                        className="w-full min-h-[120px] p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 outline-none transition-all resize-none"
-                        dir="auto"
-                      />
-                      {articlePrompt && (
-                        <button
-                          onClick={() => setArticlePrompt('')}
-                          className="absolute top-2 left-2 p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                          title="مسح النص"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={handleGenerateArticle}
-                    disabled={isGeneratingArticle || !articlePrompt.trim()}
-                    className="w-full flex items-center justify-center gap-2 bg-emerald-600 text-white px-6 py-3 rounded-xl font-medium hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isGeneratingArticle ? (
-                      <>
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        جاري كتابة المقال...
-                      </>
-                    ) : (
-                      <>
-                        <FileText className="w-5 h-5" />
-                        كتابة المقال
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {error && (
-                <div className="bg-red-50 text-red-600 p-4 rounded-xl text-sm border border-red-100">
-                  {error}
-                </div>
-              )}
-
-              <AnimatePresence>
-                {generatedArticle && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-white rounded-2xl p-5 shadow-sm border border-emerald-100 relative overflow-hidden"
-                  >
-                    <div className="absolute top-0 right-0 w-1 h-full bg-emerald-500" />
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 border-b border-slate-100 pb-4">
-                      <h3 className="font-bold text-slate-800">المقال الجاهز</h3>
-                      <button 
-                        onClick={handleCopyArticle}
-                        className="text-slate-400 hover:text-emerald-600 transition-colors p-1.5 hover:bg-emerald-50 rounded-lg flex items-center justify-center gap-1 text-sm w-full sm:w-auto"
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label className="mb-2 block">موضوع المقال</Label>
+                  <div className="relative">
+                    <Textarea
+                      value={articlePrompt}
+                      onChange={(e) => setArticlePrompt(e.target.value)}
+                      placeholder="اكتب موضوع المقال أو الفكرة التي تريد الكتابة عنها بالتفصيل..."
+                      className="min-h-[120px] resize-none"
+                      dir="auto"
+                    />
+                    {articlePrompt && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setArticlePrompt('')}
+                        className="absolute top-2 left-2 h-8 w-8 text-muted-foreground hover:text-destructive"
                       >
-                        {articleCopied ? (
-                          <><Check className="w-4 h-4 text-emerald-500" /> تم النسخ</>
-                        ) : (
-                          <><Copy className="w-4 h-4" /> نسخ المقال</>
-                        )}
-                      </button>
-                    </div>
-                    <div className="prose prose-slate prose-emerald max-w-none text-slate-700 leading-relaxed" dir="rtl">
-                      <Markdown>{generatedArticle}</Markdown>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
-          )}
-      </main>
+                        <X className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <Button
+                  onClick={handleGenerateArticle}
+                  disabled={isGeneratingArticle || !articlePrompt.trim()}
+                  className="w-full"
+                >
+                  {isGeneratingArticle ? (
+                    <>
+                      <Loader2 className="w-5 h-5 ml-2 animate-spin" />
+                      جاري كتابة المقال...
+                    </>
+                  ) : (
+                    <>
+                      <FileText className="w-5 h-5 ml-2" />
+                      كتابة المقال
+                    </>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+
+            {error && (
+              <div className="bg-destructive/10 text-destructive p-4 rounded-xl text-sm border border-destructive/20">
+                {error}
+              </div>
+            )}
+
+            <AnimatePresence>
+              {generatedArticle && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-card rounded-2xl p-5 shadow-sm border relative overflow-hidden"
+                >
+                  <div className="absolute top-0 right-0 w-1 h-full bg-primary" />
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 border-b pb-4">
+                    <h3 className="font-bold">المقال الجاهز</h3>
+                    <Button 
+                      variant="outline"
+                      onClick={handleCopyArticle}
+                      className="w-full sm:w-auto"
+                    >
+                      {articleCopied ? (
+                        <><Check className="w-4 h-4 ml-2 text-primary" /> تم النسخ</>
+                      ) : (
+                        <><Copy className="w-4 h-4 ml-2" /> نسخ المقال</>
+                      )}
+                    </Button>
+                  </div>
+                  <div className="prose prose-slate dark:prose-invert max-w-none leading-relaxed" dir="rtl">
+                    <Markdown>{generatedArticle}</Markdown>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        </TabsContent>
+      </Tabs>
     </motion.div>
   );
 }
